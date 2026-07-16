@@ -1,14 +1,43 @@
 import axios from 'axios';
 
 const API_BASE_URL = "http://localhost:8080/api/employees";
+const AUTH_BASE_URL = "http://localhost:8080/api/auth";
+
+// Automatically inject the JWT token into the header of every single outgoing request
+axios.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 class EmployeeService {
-    // 1. Fetch dashboard metric statistics
+    // Authentication endpoint handler
+    login(username, password) {
+        return axios.post(`${AUTH_BASE_URL}/login`, { username, password })
+            .then(response => {
+                if (response.data.token) {
+                    localStorage.setItem('token', response.data.token);
+                }
+                return response.data;
+            });
+    }
+
+    // Clear local storage on session expiration or logout
+    logout() {
+        localStorage.removeItem('token');
+    }
+
     getDashboardStats() {
         return axios.get(`${API_BASE_URL}/dashboard-stats`);
     }
 
-    // 2. Fetch all employees or handle query filters
     getAllEmployees(searchQuery = "") {
         if (searchQuery.trim() !== "") {
             return axios.get(`${API_BASE_URL}/search?query=${searchQuery}`);
@@ -16,26 +45,21 @@ class EmployeeService {
         return axios.get(API_BASE_URL);
     }
 
-    // 3. Create a new employee record
     createEmployee(employeeData) {
         return axios.post(API_BASE_URL, employeeData);
     }
 
-    // 4. Retrieve a specific record by its primary key id
     getEmployeeById(employeeId) {
         return axios.get(`${API_BASE_URL}/${employeeId}`);
     }
 
-    // 5. Update an existing record
     updateEmployee(employeeId, employeeData) {
         return axios.put(`${API_BASE_URL}/${employeeId}`, employeeData);
     }
 
-    // 6. Delete an employee record
     deleteEmployee(employeeId) {
         return axios.delete(`${API_BASE_URL}/${employeeId}`);
     }
 }
 
-// Export a single instantiated instance of the service class
 export default new EmployeeService();
